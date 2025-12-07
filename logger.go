@@ -142,6 +142,21 @@ func (l *Logger) Output(ctx context.Context, lvl zapcore.Level, msg string, fiel
 	l.Logger.Log(lvl, msg, final...)
 }
 
+// Flush 将各个级别的日志统一写入磁盘
+func (l *Logger) Flush(ctx context.Context) {
+	buf := getBuf(ctx)
+	if buf == nil {
+		return
+	}
+
+	buf.mu.Lock()
+	defer buf.mu.Unlock()
+
+	for lvl := range buf.levelOrder {
+		l.Output(ctx, lvl, "")
+	}
+}
+
 func (l *Logger) Sync() error {
 	return l.Logger.Sync()
 }
