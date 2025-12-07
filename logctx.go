@@ -120,6 +120,10 @@ func AddMetaFields(ctx context.Context, fields ...zap.Field) {
 	}
 }
 
+func AddLevelField(ctx context.Context, lvl zapcore.Level, field zap.Field) {
+	AddLevelFields(ctx, lvl, field)
+}
+
 // AddLevelFields 增加自定义级别字段
 func AddLevelFields(ctx context.Context, lvl zapcore.Level, fields ...zap.Field) {
 	buf := getBuf(ctx)

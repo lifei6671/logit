@@ -41,9 +41,9 @@ logger.AddMetaField(ctx, zap.String("trace_id", "xxxx"))
 }
 ```
 
-✔ 仅在一次函数执行结束时输出
-✔ 避免业务层多点日志污染
-✔ 聚合信息更完整
+- ✔ 仅在一次函数执行结束时输出
+- ✔ 避免业务层多点日志污染
+- ✔ 聚合信息更完整
 
 ---
 
@@ -52,9 +52,9 @@ logger.AddMetaField(ctx, zap.String("trace_id", "xxxx"))
 写入顺序严格保持：
 
 ```
-Add(uid=Tom)
-Add(time=300ms)
-Add(uid=Jack) → 会覆盖但位置不变
+logit.AddField(uid=Tom)
+logit.AddField(time=300ms)
+logit.AddField(uid=Jack) → 会覆盖但位置不变
 ```
 
 最终结构：
@@ -66,19 +66,19 @@ uid=Jack → time=300ms
 删除：
 
 ```
-RemoveField("uid")
+logit.RemoveField(ctx,"uid")
 ```
 
 查找：
 
 ```
-HasField("uid")
+logit.FindFiedl(ctx,"uid")
 ```
 
 级别隔离：
 
 ```
-AddLevelField(Error, zap.String("errCode", "E500"))
+logit.AddLevelField(ctx,zap.ErrorLevel, logit.String("errCode", "E500"))
 ```
 
 只有 Error 才输出。
@@ -97,7 +97,7 @@ AddLevelField(Error, zap.String("errCode", "E500"))
 使用：
 
 ```
-AddMetaField(ctx, zap.String("trace", "xyz"))
+logit.AddMetaField(ctx, zap.String("trace", "xyz"))
 ```
 
 日志等级无关均输出。
@@ -187,9 +187,9 @@ func BizHandler(ctx context.Context) error {
 ## 🔍 调试日志输出示例
 
 ```go
-logger.Info("service started",
-    zap.String("version", "1.0"),
-    zap.Int("pid", os.Getpid()))
+logger.Info(ctx,"service started",
+    logit.String("version", "1.0"),
+    logit.Int("pid", os.Getpid()))
 ```
 
 ---
