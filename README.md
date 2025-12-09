@@ -184,6 +184,42 @@ func BizHandler(ctx context.Context) error {
 
 ---
 
+## 🔄 与标准库Slog集成
+
+Logit支持与Go标准库中的`slog`集成，可将Zap日志组件包装为`slog`日志组件，示例如下：
+
+```go
+func ExampleNewSlogLogger() {
+	rules := []logit.ZapDispatch{
+		{FileSuffix: "", Levels: []zapcore.Level{zapcore.InfoLevel, zapcore.DebugLevel}},
+		{FileSuffix: "wf", Levels: []zapcore.Level{zapcore.WarnLevel, zapcore.ErrorLevel}},
+	}
+
+	core, closeFn, err := logit.BuildDefaultZapCore(
+		"1hour",
+		"service.log",
+		rules,
+		logit.WithMaxFileNum(48),
+		logit.WithFlushDuration(time.Second),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer closeFn()
+
+	logger := logit.NewSlogLogger(core)
+
+	// 埋入日志容器
+	ctx := logit.WithContext(context.Background())
+
+	// 写入日志字段
+	logit.AddInfo(ctx, logit.Any("key", "value"))
+
+	// 内部自动从日志容器内汇总所有字段并合并到日志中
+	logger.InfoContext(ctx, "INFO MESSAGE")
+}
+```
+
 ## 🔍 调试日志输出示例
 
 ```go
@@ -266,6 +302,57 @@ defer logit.Flush(ctx)
 * APM tracing 替代存储方式
 
 ---
+
+
+## 📝 常用API说明
+
+### 日志字段相关
+- `AddField(ctx context.Context, field zap.Field)`：向上下文添加普通字段
+- `AddMetaField(ctx context.Context, field zap.Field)`：添加元数据字段，所有日志级别都会输出
+- `AddLevelField(ctx context.Context, lvl zapcore.Level, field zap.Field)`：添加指定级别字段，仅对应级别日志输出
+- `AddDebug(ctx context.Context, fields ...zap.Field)`：添加Debug级别字段
+- `AddInfo(ctx context.Context, fields ...zap.Field)`：添加Info级别字段
+- `AddWarn(ctx context.Context, fields ...zap.Field)`：添加Warn级别字段
+- `AddError(ctx context.Context, fields ...zap.Field)`：添加Error级别字段
+- `AddFatal(ctx context.Context, fields ...zap.Field)`：添加Fatal级别字段
+- `RemoveField(ctx context.Context, key string)`：删除指定字段
+- `FindField(ctx context.Context, key string) (zap.Field, bool)`：查找指定字段
+- `FindMetaField(ctx context.Context, key string) (zap.Field, bool)`：查找元数据字段
+
+### 日志写入相关
+- `Debug(ctx context.Context, msg string, fields ...zap.Field)`：输出Debug级别日志
+- `Info(ctx context.Context, msg string, fields ...zap.Field)`：输出Info级别日志
+- `Warn(ctx context.Context, msg string, fields ...zap.Field)`：输出Warn级别日志
+- `Error(ctx context.Context, msg string, fields ...zap.Field)`：输出Error级别日志
+- `Fatal(ctx context.Context, msg string, fields ...zap.Field)`：输出Fatal级别日志
+- `Panic(ctx context.Context, msg string, fields ...zap.Field)`：输出Panic级别日志
+- `Sync() error`：同步日志到磁盘
+
+### 上下文相关
+- `WithContext(ctx context.Context) context.Context`：将日志字段容器嵌入上下文
+- `NewContext(ctx context.Context) context.Context`：初始化新的日志容器并嵌入上下文
+- `Flush(ctx context.Context)`：将各级别日志统一写入磁盘
+
+## 🚀 性能考量
+
+1. **基于Zap内核**：Logit使用Zap作为底层日志内核，继承了其高性能特性，包括零字符串拼接和低内存分配
+2. **缓冲机制**：通过上下文聚合日志字段，减少IO操作次数，提高性能
+3. **异步写入**：支持异步写入日志，避免阻塞业务流程
+4. **字段管理**：高效的字段管理机制，支持字段的添加、覆盖、删除和查找，操作复杂度低
+
+## ❓ 常见问题
+
+### 如何确保日志字段的顺序？
+Logit会严格按照字段添加的顺序维护字段，后续添加的同名字段会覆盖之前的字段，但位置保持不变。
+
+### 元数据字段和普通字段有什么区别？
+元数据字段会在所有级别的日志中输出，而普通字段和级别字段则根据日志级别决定是否输出。
+
+### 如何处理日志文件过大的问题？
+Logit基于lumberjack实现了日志切分功能，可配置按大小切割、按日期限制存活周期、压缩旧日志等。
+
+### 如何在分布式系统中追踪请求？
+可以通过`AddMetaField`添加`trace_id`等追踪标识，这些标识会在所有相关日志中出现，便于追踪整个请求链路。
 
 ## 📄 License
 
