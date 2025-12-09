@@ -223,7 +223,7 @@ func ExampleNewSlogLogger() {
 ## 🔍 调试日志输出示例
 
 ```go
-logger.Info(ctx,"service started",
+logger.InfoContext(ctx,"service started",
     logit.String("version", "1.0"),
     logit.Int("pid", os.Getpid()))
 ```
@@ -307,6 +307,7 @@ defer logit.Flush(ctx)
 ## 📝 常用API说明
 
 ### 日志字段相关
+
 - `AddField(ctx context.Context, field zap.Field)`：向上下文添加普通字段
 - `AddMetaField(ctx context.Context, field zap.Field)`：添加元数据字段，所有日志级别都会输出
 - `AddLevelField(ctx context.Context, lvl zapcore.Level, field zap.Field)`：添加指定级别字段，仅对应级别日志输出
@@ -320,6 +321,7 @@ defer logit.Flush(ctx)
 - `FindMetaField(ctx context.Context, key string) (zap.Field, bool)`：查找元数据字段
 
 ### 日志写入相关
+
 - `Debug(ctx context.Context, msg string, fields ...zap.Field)`：输出Debug级别日志
 - `Info(ctx context.Context, msg string, fields ...zap.Field)`：输出Info级别日志
 - `Warn(ctx context.Context, msg string, fields ...zap.Field)`：输出Warn级别日志
@@ -329,6 +331,7 @@ defer logit.Flush(ctx)
 - `Sync() error`：同步日志到磁盘
 
 ### 上下文相关
+
 - `WithContext(ctx context.Context) context.Context`：将日志字段容器嵌入上下文
 - `NewContext(ctx context.Context) context.Context`：初始化新的日志容器并嵌入上下文
 - `Flush(ctx context.Context)`：将各级别日志统一写入磁盘
