@@ -60,7 +60,7 @@ func New(cfg Config) *Logger {
 
 	l := zap.New(core,
 		zap.AddCaller(),
-		zap.AddCallerSkip(1),
+		zap.AddCallerSkip(2),
 		zap.AddStacktrace(zap.ErrorLevel),
 	)
 
@@ -93,52 +93,7 @@ func (l *Logger) Panic(ctx context.Context, msg string, fields ...zap.Field) {
 
 // Output 日志刷入磁盘
 func (l *Logger) Output(ctx context.Context, lvl zapcore.Level, msg string, fields ...zap.Field) {
-	buf := getBuf(ctx)
-	if buf == nil {
-		return
-	}
-
-	buf.mu.Lock()
-	defer buf.mu.Unlock()
-
-	final := make([]zap.Field, 0)
-	fkv := make(map[string]zap.Field, len(buf.normalFields)+len(buf.levelFields))
-
-	// 1）保证元数据顺序
-	for _, k := range buf.metaOrder {
-		if f, ok := buf.metaFields[k]; ok {
-			final = append(final, f)
-			fkv[k] = f
-		}
-	}
-
-	if lvl == zap.InfoLevel {
-		// 2）普通字段顺序
-		for _, k := range buf.normalOrder {
-			if f, ok := buf.normalFields[k]; ok {
-				if _, ok := fkv[k]; !ok {
-					// 这里不能覆盖元数据字段
-					final = append(final, f)
-				}
-			}
-		}
-	}
-
-	// 3）level 字段严格保持顺序
-	for _, k := range buf.levelOrder[lvl] {
-		if f, ok := buf.levelFields[lvl][k]; ok {
-			if _, ok := fkv[k]; !ok {
-				// 这里不能覆盖元数据字段
-				final = append(final, f)
-			}
-		}
-	}
-	// 4）最后补充字段
-	for _, field := range fields {
-		if _, ok := fkv[field.Key]; !ok {
-			final = append(final, field)
-		}
-	}
+	final := allFields(ctx, lvl, fields...)
 	l.Logger.Log(lvl, msg, final...)
 }
 

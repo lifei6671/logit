@@ -17,7 +17,7 @@ func main() {
 		MaxAge:     7, // days
 		Compress:   true,
 		Level:      "debug",
-		ToStdout:   true,
+		ToStdout:   false,
 	})
 
 	ctx := logit.WithContext(context.Background())
@@ -27,6 +27,8 @@ func main() {
 	logger.Info(ctx, "service started", logit.String("service", "service"))
 
 	logger.Debug(ctx, "debugging user info", zap.String("user", "Tom"), zap.Int("age", 30))
+
+	logger.Error(ctx, "error log", logit.Int64("logid", time.Now().Unix()))
 
 	for i := 0; i < 1000; i++ {
 		logit.AddInfo(ctx, zap.Int("index", i))

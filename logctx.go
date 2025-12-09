@@ -73,6 +73,54 @@ func getBuf(ctx context.Context) *LogBuffer {
 	return nil
 }
 
+func allFields(ctx context.Context, lvl zapcore.Level, fields ...zap.Field) []zap.Field {
+	buf := getBuf(ctx)
+	if buf == nil {
+		return []zap.Field{}
+	}
+	buf.mu.RLock()
+	defer buf.mu.RUnlock()
+	final := make([]zap.Field, 0)
+	fkv := make(map[string]zap.Field, len(buf.normalFields)+len(buf.levelFields))
+
+	// 1）保证元数据顺序
+	for _, k := range buf.metaOrder {
+		if f, ok := buf.metaFields[k]; ok {
+			final = append(final, f)
+			fkv[k] = f
+		}
+	}
+
+	if lvl == zap.InfoLevel {
+		// 2）普通字段顺序
+		for _, k := range buf.normalOrder {
+			if f, ok := buf.normalFields[k]; ok {
+				if _, ok := fkv[k]; !ok {
+					// 这里不能覆盖元数据字段
+					final = append(final, f)
+				}
+			}
+		}
+	}
+
+	// 3）level 字段严格保持顺序
+	for _, k := range buf.levelOrder[lvl] {
+		if f, ok := buf.levelFields[lvl][k]; ok {
+			if _, ok := fkv[k]; !ok {
+				// 这里不能覆盖元数据字段
+				final = append(final, f)
+			}
+		}
+	}
+	// 4）最后补充字段
+	for _, field := range fields {
+		if _, ok := fkv[field.Key]; !ok {
+			final = append(final, field)
+		}
+	}
+	return final
+}
+
 // ---------------- 排序写入逻辑 ----------------
 
 func ensureOrderedUpdate(order []string, key string) []string {
