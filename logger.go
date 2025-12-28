@@ -166,3 +166,7 @@ func parseLevel(level string) zapcore.Level {
 		return zap.InfoLevel
 	}
 }
+
+func NewWithZap(l *zap.Logger) *Logger {
+	return &Logger{l}
+}
