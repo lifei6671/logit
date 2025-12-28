@@ -167,6 +167,47 @@ func parseLevel(level string) zapcore.Level {
 	}
 }
 
+// NewWithZap 使用自定义 zap.Logger 对象包装
 func NewWithZap(l *zap.Logger) *Logger {
 	return &Logger{l}
+}
+
+// NewWithDispatch 自定义调度规则
+// ruleName 内置的规则：
+//
+//	1hour -> 1小时  后缀如  .2025040117
+//	1day  -> 1天    后缀如  .20250401
+//	no    -> 无后缀
+//	1min  -> 1分钟  后缀如  .202504011700  .202504011701  .202504011702  .202504011759
+//	5min  -> 5分钟  后缀如  .202504011700  .202504011705  .202504011710  .202504011715
+//	10min -> 10分钟 后缀如  .202504011700  .202504011710  .202504011720  .202504011750
+//	30min -> 30分钟 后缀如  .202504011700  .202504011730
+//
+// filename : 日志文件前缀 service.log
+// dispatchRules : 日志分发规则
+func NewWithDispatch(
+	ruleName string,
+	filename string,
+	dispatchRules []ZapDispatch,
+	writerBuilder WriterBuilder,
+	encoderBuilder EncoderBuilder,
+	opts ...ZapWriterOptions) (*Logger, CloseFunc, error) {
+
+	// 初始化日志切分和清理规则
+	core, closeFn, err := BuildDispatchCore(
+		ruleName,
+		filename,
+		dispatchRules,
+		writerBuilder,
+		encoderBuilder,
+		opts...,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	// 初始化 zap 核心
+	zapLogger := zap.New(core)
+
+	return &Logger{zapLogger}, closeFn, nil
+
 }
