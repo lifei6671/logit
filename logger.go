@@ -38,7 +38,7 @@ func InitLogger(config Config) {
 	})
 }
 
-// New 初始化日志对象
+// New 初始化日志对象，默认使用 lumberjack.v2 作为日志切割
 func New(cfg Config) *Logger {
 	writeSyncer := getWriter(cfg)
 	encoder := cfg.Encoder
@@ -46,7 +46,7 @@ func New(cfg Config) *Logger {
 		encoder = getEncoder()
 	}
 
-	level := parseLevel(cfg.Level)
+	level := ParseLevel(cfg.Level)
 
 	core := zapcore.NewCore(encoder, writeSyncer, level)
 	if cfg.ToStdout {
@@ -150,7 +150,8 @@ func timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(t.Format(time.DateTime)) // 2025-01-08 12:22:51
 }
 
-func parseLevel(level string) zapcore.Level {
+// ParseLevel 将字符串日志级别映射为 zap 支持的日志级别
+func ParseLevel(level string) zapcore.Level {
 	switch level {
 	case "debug":
 		return zap.DebugLevel
@@ -172,7 +173,7 @@ func NewWithZap(l *zap.Logger) *Logger {
 	return &Logger{l}
 }
 
-// NewWithDispatch 自定义调度规则
+// NewWithDispatch 自定义调度规则，使用自定义库作为日志切库，支持按时间切分日志
 // ruleName 内置的规则：
 //
 //	1hour -> 1小时  后缀如  .2025040117
