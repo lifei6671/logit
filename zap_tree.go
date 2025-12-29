@@ -22,28 +22,6 @@ type ZapDispatch struct {
 	EncoderBuilder EncoderBuilder
 }
 
-type WriterBuilder func(ruleName, filename string, opts ...ZapWriterOptions) (zapcore.WriteSyncer, error)
-
-func DefaultWriterBuild(ruleName, filename string, opts ...ZapWriterOptions) (zapcore.WriteSyncer, error) {
-	return BuildZapWriteSyncer(ruleName, filename, opts...)
-}
-
-type EncoderBuilder func() zapcore.Encoder
-
-func DefaultEncoder() zapcore.Encoder {
-	encoderCfg := zapcore.EncoderConfig{
-		TimeKey:        "ts",
-		MessageKey:     "msg",
-		LevelKey:       "level",
-		CallerKey:      "caller",
-		StacktraceKey:  "stacktrace",
-		EncodeLevel:    zapcore.LowercaseLevelEncoder,
-		EncodeTime:     zapcore.ISO8601TimeEncoder,
-		EncodeDuration: zapcore.StringDurationEncoder,
-	}
-	return zapcore.NewJSONEncoder(encoderCfg)
-}
-
 type CloseFunc func()
 
 func BuildDefaultZapCore(
@@ -53,6 +31,8 @@ func BuildDefaultZapCore(
 	opts ...ZapWriterOptions) (zapcore.Core, CloseFunc, error) {
 	return BuildDispatchCore(ruleName, filename, dispatchRule, DefaultWriterBuild, DefaultEncoder, opts...)
 }
+
+// BuildDispatchCore 构建 zap 日志核心
 func BuildDispatchCore(
 	ruleName string,
 	filename string,
