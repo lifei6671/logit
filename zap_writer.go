@@ -44,7 +44,12 @@ func BuildZapWriteSyncer(ruleName string, filename string, opts ...ZapWriterOpti
 		MaxFileNum:    o.MaxFileNum,
 	}
 
-	w, err := rotatefiles.NewRotateFile(opt)
+	var rOpts []rotatefiles.RotateFileOption
+	if o.OnError != nil {
+		rOpts = append(rOpts, rotatefiles.WithOnErr(o.OnError))
+	}
+
+	w, err := rotatefiles.NewRotateFile(opt, rOpts...)
 	if err != nil {
 		return nil, generator, err
 	}
