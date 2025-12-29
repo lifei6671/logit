@@ -10,23 +10,28 @@ import (
 )
 
 // WriterBuilder 日志写构建函数
-type WriterBuilder func(ruleName, filename string, opts ...ZapWriterOptions) (zapcore.WriteSyncer, error)
+type WriterBuilder func(ruleName, filename string, opts ...ZapWriterOptions) (zapcore.WriteSyncer, rotatefiles.RotateGenerator, error)
 
 // DefaultWriterBuild 默认构建器
-func DefaultWriterBuild(ruleName, filename string, opts ...ZapWriterOptions) (zapcore.WriteSyncer, error) {
+func DefaultWriterBuild(ruleName, filename string, opts ...ZapWriterOptions) (zapcore.WriteSyncer, rotatefiles.RotateGenerator, error) {
 	return BuildZapWriteSyncer(ruleName, filename, opts...)
 }
 
 // BuildZapWriteSyncer 实现自动按日期分隔的日志写入器
-func BuildZapWriteSyncer(ruleName string, filename string, opts ...ZapWriterOptions) (zapcore.WriteSyncer, error) {
+func BuildZapWriteSyncer(ruleName string, filename string, opts ...ZapWriterOptions) (zapcore.WriteSyncer, rotatefiles.RotateGenerator, error) {
 	o := &BuildZapWriterOption{}
 	for _, f := range opts {
 		f(o)
 	}
 	generator, err := rotatefiles.NewSimpleRotateGenerator(ruleName, filename, o.OnError)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	if sErr := generator.Start(context.Background()); sErr != nil {
+		return nil, nil, fmt.Errorf("start generator err:%s", sErr)
+	}
+
 	opt := &rotatefiles.RotateOption{
 		RotateGenerator: generator,
 		NewWriter: func(ctx context.Context, wc io.WriteCloser) (rotatefiles.AsyncWriter, error) {
@@ -41,8 +46,8 @@ func BuildZapWriteSyncer(ruleName string, filename string, opts ...ZapWriterOpti
 
 	w, err := rotatefiles.NewRotateFile(opt)
 	if err != nil {
-		return nil, err
+		return nil, generator, err
 	}
 
-	return zapcore.AddSync(w), nil
+	return zapcore.AddSync(w), generator, nil
 }

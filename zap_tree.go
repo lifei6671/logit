@@ -1,8 +1,8 @@
 package logit
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"strings"
 
 	"go.uber.org/zap/zapcore"
@@ -44,7 +44,8 @@ func BuildDispatchCore(
 	var cores []zapcore.Core
 
 	// 记录所有创建出来的 writer，方便退出时 Close/Sync
-	var closers []zapcore.WriteSyncer
+	var writes []zapcore.WriteSyncer
+	var closers []func()
 
 	for _, rule := range dispatchRules {
 		if len(rule.Levels) == 0 {
@@ -56,10 +57,14 @@ func BuildDispatchCore(
 		if writerBuilder == nil {
 			writerBuilder = DefaultWriterBuild
 		}
-		ws, err := writerBuilder(ruleName, file, opts...)
+		ws, generator, err := writerBuilder(ruleName, file, opts...)
 		if err != nil {
 			return nil, nil, err
 		}
+		if sErr := generator.Start(context.Background()); sErr != nil {
+			return nil, nil, sErr
+		}
+
 		// 优先使用独立编码器
 		if rule.EncoderBuilder != nil {
 			encoderBuilder = rule.EncoderBuilder
@@ -79,7 +84,10 @@ func BuildDispatchCore(
 		)
 
 		cores = append(cores, core)
-		closers = append(closers, ws)
+		writes = append(writes, ws)
+		closers = append(closers, func() {
+			_ = generator.Stop(context.Background())
+		})
 	}
 	if len(cores) == 0 {
 		return nil, nil, fmt.Errorf("no valid dispatch rules, cores is empty")
@@ -87,16 +95,17 @@ func BuildDispatchCore(
 	dispatchCore := zapcore.NewTee(cores...)
 
 	return dispatchCore, func() {
-		seen := make(map[zapcore.WriteSyncer]struct{}, len(closers))
-		for _, w := range closers {
+		seen := make(map[zapcore.WriteSyncer]struct{}, len(writes))
+		for _, w := range writes {
 			if _, ok := seen[w]; ok {
 				continue
 			}
 			seen[w] = struct{}{}
-
 			_ = w.Sync()
-			if closer, ok := w.(io.Closer); ok {
-				_ = closer.Close()
+		}
+		for _, w := range closers {
+			if w != nil {
+				w()
 			}
 		}
 	}, nil
