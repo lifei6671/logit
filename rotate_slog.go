@@ -1,13 +1,7 @@
 package logit
 
 import (
-	"context"
-	"fmt"
-	"io"
 	"time"
-
-	"github.com/lifei6671/rotatefiles"
-	"go.uber.org/zap/zapcore"
 )
 
 type BuildZapWriterOption struct {
